@@ -3,6 +3,7 @@
 $: << "../lib"
 
 require 'zip/zipfilesystem'
+require 'fileutils'
 
 EXAMPLE_ZIP = "filesystem.zip"
 

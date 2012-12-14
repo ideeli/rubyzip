@@ -1,22 +1,12 @@
 module IOExtras  #:nodoc:
 
-  CHUNK_SIZE = 131072
+  CHUNK_SIZE = 32768
 
   RANGE_ALL = 0..-1
 
   def self.copy_stream(ostream, istream)
     s = ''
     ostream.write(istream.read(CHUNK_SIZE, s)) until istream.eof? 
-  end
-
-  def self.copy_stream_n(ostream, istream, nbytes)
-    s = ''
-    toread = nbytes
-    while (toread > 0 && ! istream.eof?) 
-      tr = toread > CHUNK_SIZE ? CHUNK_SIZE : toread
-      ostream.write(istream.read(tr, s))
-      toread -= tr
-    end 
   end
 
 
@@ -45,11 +35,11 @@ module IOExtras  #:nodoc:
     def read(numberOfBytes = nil, buf = nil)
       tbuf = nil
 
-      if @outputBuffer.bytesize > 0
-        if numberOfBytes <= @outputBuffer.bytesize
+      if @outputBuffer.length > 0
+        if numberOfBytes <= @outputBuffer.length
           tbuf = @outputBuffer.slice!(0, numberOfBytes)
         else
-          numberOfBytes -= @outputBuffer.bytesize if (numberOfBytes)
+          numberOfBytes -= @outputBuffer.length if (numberOfBytes)
           rbuf = sysread(numberOfBytes, buf)
           tbuf = @outputBuffer
           tbuf << rbuf if (rbuf)
@@ -73,45 +63,45 @@ module IOExtras  #:nodoc:
     def readlines(aSepString = $/)
       retVal = []
       each_line(aSepString) { |line| retVal << line }
-      retVal
+      return retVal
     end
-
-    def gets(aSepString = $/)
+    
+    def gets(aSepString=$/)
       @lineno = @lineno.next
-      return read if aSepString.nil?
-      aSepString = "#{$/}#{$/}" if aSepString.empty?
-
-      bufferIndex = 0
+      return read if aSepString == nil
+      aSepString="#{$/}#{$/}" if aSepString == ""
+      
+      bufferIndex=0
       while ((matchIndex = @outputBuffer.index(aSepString, bufferIndex)) == nil)
-        bufferIndex = [bufferIndex, @outputBuffer.bytesize - aSepString.bytesize].max
-        if input_finished?
-          return @outputBuffer.empty? ? nil : flush
-        end
-        @outputBuffer << produce_input
+	bufferIndex=@outputBuffer.length
+	if input_finished?
+	  return @outputBuffer.empty? ? nil : flush 
+	end
+	@outputBuffer << produce_input
       end
-      sepIndex = matchIndex + aSepString.bytesize
+      sepIndex=matchIndex + aSepString.length
       return @outputBuffer.slice!(0...sepIndex)
     end
-
+    
     def flush
-      retVal = @outputBuffer
+      retVal=@outputBuffer
       @outputBuffer=""
       return retVal
     end
-
+    
     def readline(aSepString = $/)
       retVal = gets(aSepString)
       raise EOFError if retVal == nil
-      retVal
+      return retVal
     end
-
+    
     def each_line(aSepString = $/)
       while true
-        yield readline(aSepString)
+	yield readline(aSepString)
       end
     rescue EOFError
     end
-
+    
     alias_method :each, :each_line
   end
 
@@ -123,12 +113,15 @@ module IOExtras  #:nodoc:
 
     def write(data)
       self << data
-      data.to_s.bytesize
+      data.to_s.length
     end
 
 
     def print(*params)
-      self << params.join($,) << $\.to_s
+      if params.size > 0
+        self << params.join($,.to_s)
+      end
+      self << $\.to_s
     end
 
     def printf(aFormatString, *params)
@@ -137,20 +130,21 @@ module IOExtras  #:nodoc:
 
     def putc(anObject)
       self << case anObject
-      when Fixnum then anObject.chr
-      when String then anObject
-      else raise TypeError, "putc: Only Fixnum and String supported"
-      end
+	      when Fixnum then anObject.chr
+	      when String then anObject
+	      else raise TypeError, "putc: Only Fixnum and String supported"
+	      end
       anObject
     end
-
+    
     def puts(*params)
       params << "\n" if params.empty?
-      params.flatten.each do |element|
-        val = element.to_s
-        self << val
-        self << "\n" unless val[-1,1] == "\n"
-      end
+      params.flatten.each {
+	|element|
+	val = element.to_s
+	self << val
+	self << "\n" unless val[-1,1] == "\n"
+      }
     end
 
   end
